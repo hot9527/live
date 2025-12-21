@@ -1,16 +1,28 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- 强制禁用缓存，确保每次获取最新内容 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>诺诺老师教男性健康</title>
+    
+    <!-- 预连接目标域名，加速连接 -->
+    <link rel="preconnect" href="https://k.starsofthot.cn/" crossorigin>
+    
     <style type="text/css">
         * {
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
             outline: none !important;
+            box-sizing: border-box !important;
         }
+        
         html, body {
             width: 100vw !important;
             height: 100vh !important;
@@ -18,7 +30,9 @@
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
+            background: #f5f5f5 !important; /* 添加背景色，加载时不会白屏 */
         }
+        
         #fullscreen-iframe {
             width: 100vw !important;
             height: 100vh !important;
@@ -26,20 +40,242 @@
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
+            z-index: 1000 !important;
+            opacity: 0 !important; /* 初始隐藏，加载完成后显示 */
+            transition: opacity 0.3s ease !important;
+        }
+        
+        /* 加载提示样式 */
+        #loading-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #f5f5f5 !important;
             z-index: 9999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            font-family: Arial, sans-serif !important;
+            transition: opacity 0.5s ease !important;
+        }
+        
+        .loading-spinner {
+            width: 50px !important;
+            height: 50px !important;
+            border: 5px solid #e0e0e0 !important;
+            border-top: 5px solid #3498db !important;
+            border-radius: 50% !important;
+            animation: spin 1s linear infinite !important;
+            margin-bottom: 20px !important;
+        }
+        
+        .loading-text {
+            color: #666 !important;
+            font-size: 16px !important;
+            margin-bottom: 10px !important;
+        }
+        
+        #retry-button {
+            background: #3498db !important;
+            color: white !important;
+            border: none !important;
+            padding: 10px 20px !important;
+            border-radius: 5px !important;
+            font-size: 14px !important;
+            cursor: pointer !important;
+            margin-top: 10px !important;
+            display: none !important;
+        }
+        
+        #retry-button:hover {
+            background: #2980b9 !important;
+        }
+        
+        .error-message {
+            color: #e74c3c !important;
+            font-size: 14px !important;
+            margin-top: 10px !important;
+            display: none !important;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
+    <!-- 加载覆盖层 -->
+    <div id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">正在加载页面...</div>
+        <button id="retry-button" onclick="retryLoading()">重新加载</button>
+        <div id="error-message" class="error-message"></div>
+    </div>
+    
+    <!-- 主iframe -->
     <iframe 
         id="fullscreen-iframe"
         src="https://k.starsofthot.cn/p/r5PV2c"
-        frameborder="0"  <!-- HTML5 标准：移除边框 -->
-        marginwidth="0"  <!-- 兼容旧浏览器：水平边距为0 -->
-        marginheight="0" <!-- 兼容旧浏览器：垂直边距为0 -->
-        scrolling="auto" <!-- 保留内部滚动功能 -->
-        allowfullscreen="true" <!-- 允许 iframe 内部全屏（如百度视频） -->
-        style="border: none; padding: 0; margin: 0;" <!-- 内联样式双重保障 -->
+        frameborder="0"
+        marginwidth="0"
+        marginheight="0"
+        scrolling="auto"
+        allowfullscreen="true"
+        style="border: none; padding: 0; margin: 0;"
+        allow="autoplay; fullscreen; picture-in-picture"
+        referrerpolicy="no-referrer-when-downgrade"
+        onload="onIframeLoad()"
+        onerror="onIframeError()"
     ></iframe>
+    
+    <script type="text/javascript">
+        // 全局变量
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000; // 2秒重试间隔
+        let loadTimer = null;
+        const LOAD_TIMEOUT = 15000; // 15秒超时
+        
+        // 获取DOM元素
+        const iframe = document.getElementById('fullscreen-iframe');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const retryButton = document.getElementById('retry-button');
+        const errorMessage = document.getElementById('error-message');
+        const loadingText = document.querySelector('.loading-text');
+        
+        // 页面加载完成时调用
+        function onIframeLoad() {
+            console.log('iframe加载成功');
+            clearTimeout(loadTimer);
+            
+            // 淡出加载界面，显示iframe
+            setTimeout(() => {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    iframe.style.opacity = '1';
+                }, 500);
+            }, 500);
+        }
+        
+        // iframe加载失败时调用
+        function onIframeError() {
+            console.error('iframe加载失败');
+            clearTimeout(loadTimer);
+            
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                loadingText.textContent = `加载失败，正在重试 (${retryCount}/${MAX_RETRIES})...`;
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = '网络连接不稳定，正在尝试重新连接...';
+                
+                // 指数退避重试
+                setTimeout(retryLoading, RETRY_DELAY * retryCount);
+            } else {
+                showRetryButton();
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = '页面加载失败，请检查网络连接后重试';
+            }
+        }
+        
+        // 重试加载函数
+        function retryLoading() {
+            console.log(`第${retryCount + 1}次重试加载`);
+            
+            // 重置UI状态
+            retryButton.style.display = 'none';
+            errorMessage.style.display = 'none';
+            loadingText.textContent = '正在重新加载页面...';
+            
+            // 强制重新加载iframe（添加时间戳避免缓存）
+            const currentSrc = iframe.src.split('?')[0];
+            const timestamp = new Date().getTime();
+            iframe.src = `${currentSrc}?retry=${timestamp}&nocache=${timestamp}`;
+            
+            // 重新设置超时计时器
+            startLoadTimer();
+        }
+        
+        // 显示重试按钮
+        function showRetryButton() {
+            retryButton.style.display = 'block';
+            loadingText.textContent = '页面加载失败';
+        }
+        
+        // 启动加载超时计时器
+        function startLoadTimer() {
+            clearTimeout(loadTimer);
+            loadTimer = setTimeout(() => {
+                console.warn('iframe加载超时');
+                onIframeError();
+            }, LOAD_TIMEOUT);
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面初始化');
+            
+            // 检查iframe src是否有效
+            if (!iframe.src || iframe.src === 'https://k.starsofthot.cn/p/r5PV2c') {
+                console.error('iframe src未设置或无效');
+                errorMessage.textContent = '页面地址配置错误';
+                showRetryButton();
+                return;
+            }
+            
+            // 开始加载超时计时
+            startLoadTimer();
+            
+            // 如果iframe在5秒内没有加载，显示重试提示
+            setTimeout(() => {
+                if (loadingOverlay.style.display !== 'none') {
+                    loadingText.textContent = '加载时间较长，请耐心等待...';
+                    retryButton.style.display = 'block';
+                }
+            }, 5000);
+            
+            // 添加键盘快捷键支持
+            document.addEventListener('keydown', function(e) {
+                // F5刷新
+                if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                    e.preventDefault();
+                    retryLoading();
+                }
+                // ESC返回（如果需要的话）
+                if (e.key === 'Escape') {
+                    // 这里可以添加返回上一页的逻辑
+                }
+            });
+        });
+        
+        // 处理页面可见性变化
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && iframe.style.opacity === '0') {
+                // 页面重新变为可见时，检查iframe是否需要重载
+                console.log('页面重新可见，检查iframe状态');
+            }
+        });
+        
+        // 处理窗口大小变化，确保iframe始终全屏
+        window.addEventListener('resize', function() {
+            iframe.style.width = window.innerWidth + 'px';
+            iframe.style.height = window.innerHeight + 'px';
+        });
+        
+        // 捕获未处理的Promise错误
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('未处理的Promise错误:', event.reason);
+        });
+        
+        // 捕获全局错误
+        window.addEventListener('error', function(event) {
+            console.error('全局错误:', event.message);
+            return true; // 阻止默认错误处理
+        });
+    </script>
 </body>
 </html>
